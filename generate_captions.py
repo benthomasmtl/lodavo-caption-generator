@@ -89,10 +89,27 @@ def clean_text(text: str) -> str:
     # Convert to uppercase
     text = text.upper()
     
-    # Keep only question marks, remove other punctuation except spaces and apostrophes
-    text = re.sub(r'[^\w\s\'?]', '', text)
+    # Basic comma heuristics BEFORE stripping punctuation:
+    # Add commas after common introductory words/phrases if followed by a space and a word.
+    intro_words = [
+        'look', 'listen', 'hey', 'wait', 'so', 'now', 'okay', 'ok', 'well', 'basically'
+    ]
+    def add_intro_commas(match):
+        word = match.group(1)
+        rest = match.group(2)
+        return f"{word}, {rest}" if rest else f"{word},"
+    pattern = re.compile(r'\b(' + '|'.join(intro_words) + r')\b\s+([^,])', flags=re.IGNORECASE)
+    # Apply iteratively a couple times to catch layered matches
+    for _ in range(2):
+        text = pattern.sub(lambda m: f"{m.group(1)}, {m.group(2)}", text)
+
+    # Keep only question marks, remove other punctuation except spaces and apostrophes and commas we just inserted
+    text = re.sub(r'[^\w\s\',?]', '', text)
     
-    # Clean up extra spaces
+    # Ensure single spaces after commas
+    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r'\s+,', ',', text)  # remove leading spaces before commas
+    text = re.sub(r',\s*', ', ', text)
     text = re.sub(r'\s+', ' ', text).strip()
     
     return text
@@ -122,14 +139,33 @@ def split_by_sentences(text: str) -> list:
 
 
 def break_into_short_phrases(text: str, max_words: int = 4) -> list:
-    """Break text into short phrases of max_words or fewer."""
+    """Break text into short phrases of max_words or fewer.
+
+    If an emphasis word (that will likely receive an emoji) appears, it becomes its own
+    single-word phrase so we can render it standalone with its emoji for visual punch.
+    """
     words = text.split()
     phrases = []
-    
-    for i in range(0, len(words), max_words):
-        phrase = ' '.join(words[i:i + max_words])
-        phrases.append(phrase)
-    
+    current = []
+
+    def flush_current():
+        if current:
+            phrases.append(' '.join(current))
+            current.clear()
+
+    for w in words:
+        base = re.sub(r'[^\w]', '', w.lower())
+        # If emphasis word, flush any accumulated words and add alone.
+        if base in EMPHASIS_WORDS:
+            flush_current()
+            phrases.append(w)
+            continue
+
+        current.append(w)
+        if len(current) >= max_words:
+            flush_current()
+
+    flush_current()
     return phrases
 
 
@@ -215,20 +251,14 @@ def main():
         print("Please install Faster-Whisper first: pip install -r requirements_local.txt")
         return
 
-    # Audio loading logic (same as ASS script)
-    use_numpy_audio = False
+    # Audio loading logic - use numpy/soundfile fallback since PyAV has build issues on Python 3.13
+    use_numpy_audio = True
     try:
-        import av
-        test_resampler = av.audio.resampler.AudioResampler(format="s16", layout="mono", rate=16000)
-        del test_resampler
+        import soundfile as sf
+        import numpy as np
     except Exception:
-        use_numpy_audio = True
-        try:
-            import soundfile as sf
-            import numpy as np
-        except Exception:
-            print("Missing audio packages. Install soundfile and numpy")
-            return
+        print("Missing audio packages. Install soundfile and numpy")
+        return
 
     print(f"Loading Whisper model '{args.model}'...")
     compute_type = "auto"

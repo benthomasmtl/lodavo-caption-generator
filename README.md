@@ -11,6 +11,7 @@ Built with OpenAI's Whisper for transcription and fine-tuned for Lodavo's brandi
 - **🎨 Lodavo Branding**: Automatic spelling correction and brand consistency
 - **😀 Smart Emojis**: Context-aware emoji placement with frequency control
 - **📱 CapCut Ready**: SRT format optimized for direct CapCut import
+- **🧵 Standalone Emphasis**: Key words + emoji appear as their own single-word captions
 - **🔧 Robust Setup**: Handles PyAV compatibility issues automatically
 
 ## 🚀 Quick Start
@@ -43,26 +44,26 @@ Built with OpenAI's Whisper for transcription and fine-tuned for Lodavo's brandi
 ### Basic Command
 
 ```bash
-python make_ass_from_audio_local.py input_audio.m4a output.ass --model small --language en --vad
+python generate_captions.py input_audio.m4a output.srt --model large-v3 --language en --vad
 ```
 
 ### Parameters
 
 - `input_audio.m4a` - Your audio/video file (.m4a, .mp3, .wav, .mov, etc.)
-- `output.ass` - Output caption file name
-- `--model small` - Whisper model size (tiny/base/small/medium/large-v3)
-  - **small**: Fast, good accuracy (~500MB download, recommended)
-  - **large-v3**: Best accuracy but slow (~3GB download)
+- `output.srt` - Output caption file name (SubRip)
+- `--model large-v3` - Whisper model size (tiny/base/small/medium/large-v3)
+  - **large-v3**: Best accuracy (~3GB download, recommended)
+  - **small**: Fast, good accuracy (~500MB download)
 - `--language en` - Language code (en for English)
 - `--vad` - Enable Voice Activity Detection for cleaner segments
 
 ### Example
 
 ```bash
-python make_ass_from_audio_local.py 1003-1.m4a 1003-1.ass --model small --language en --vad
+python generate_captions.py 1003-1.m4a 1003-1.srt --model large-v3 --language en --vad
 ```
 
-**First run note**: The script will download the Whisper model (~500MB for small). This only happens once—subsequent runs are offline.
+**First run note**: The script will download the Whisper model (~3GB for large-v3). This only happens once—subsequent runs are offline.
 
 ## 🎬 Importing into CapCut
 
@@ -80,7 +81,7 @@ python make_ass_from_audio_local.py 1003-1.m4a 1003-1.ass --model small --langua
 
    - Go to **Text** → **Captions**
    - Click **Import subtitle** (or **Auto captions** → **Import**)
-   - Select your generated `.ass` file (`1003-1.ass`)
+   - Select your generated `.srt` file (`1003-1.srt`)
 
 4. **Adjust if needed**:
    - CapCut will apply the styling automatically
@@ -91,13 +92,13 @@ python make_ass_from_audio_local.py 1003-1.m4a 1003-1.ass --model small --langua
 
 ### How It Works
 
-1. **Audio Conversion**: Uses FFmpeg to convert any audio format to 16kHz mono WAV
-2. **Transcription**: Faster-Whisper (optimized Whisper implementation) transcribes with word-level timestamps
-3. **Intelligent Grouping**: Merges short segments into readable caption lines (max 64 chars, max 0.6s gaps)
-4. **Smart Wrapping**: Breaks long lines into ~2 lines max (~36 chars per line)
-5. **Emoji Enhancement**: Automatically adds relevant emojis based on keywords
-6. **Emphasis Styling**: Bolds and enlarges brand-relevant words (save, win, tickets, bonus, Lodavo, etc.)
-7. **Style Selection**: Chooses appropriate style (Default/Emphasis/GoldOnBlack) based on content
+1. **Audio Conversion**: Uses FFmpeg (or fallback loaders) to obtain 16kHz mono audio
+2. **Transcription**: Faster-Whisper produces segments with start/end times
+3. **Sentence + Phrase Split**: Sentences broken at question marks, then phrases of up to 4 words
+4. **Standalone Emphasis**: Emphasis words (e.g. SAVE, WIN, BONUS, LODAVO) become single-word captions
+5. **Emoji Enhancement**: Alternating emoji addition after emphasis words, with cooldown spacing
+6. **Comma Heuristics**: Intro words like LOOK, HEY, SO gain a trailing comma for natural pacing
+7. **SRT Output**: Clean, uppercase, question-mark-only punctuation plus strategic commas
 
 ### Environment Setup
 
@@ -130,22 +131,11 @@ Building PyAV on macOS with Python 3.13 is problematic due to FFmpeg API incompa
 
 ### Modify Styles
 
-Edit the `build_ass_header()` function in `make_ass_from_audio_local.py`:
-
-```python
-Style: Default,Lexend Deca,64,&H00FFFFFF,&H00FFFFFF,&H00B30022,&H00000000,0,0,0,0,100,100,0,0,1,5,0,2,80,80,120,1
-```
-
-Format: `Name,Font,Size,PrimaryColor,SecondaryColor,OutlineColor,BackColor,...`
-
-**Colors are in BGR format with `&H00` prefix**:
-
-- Lodavo Blue `#2200B3` → `&H00B30022`
-- Gold `#FFD700` → `&H0000D7FF`
+ASS styling removed in favor of simplified SRT workflow. Styling (font, size, colors) should now be applied inside CapCut after import.
 
 ### Add More Emojis
 
-Edit the `EMOJI_MAP` dictionary:
+Edit the `EMOJI_MAP` dictionary in `generate_captions.py`:
 
 ```python
 EMOJI_MAP = {
@@ -157,21 +147,14 @@ EMOJI_MAP = {
 
 ### Change Emphasis Keywords
 
-Edit the `KEYWORDS` list in `emphasize()`:
-
-```python
-KEYWORDS = [
-    "save","win","prize","Lodavo",
-    # Add more words to emphasize...
-]
-```
+Edit the `EMPHASIS_WORDS` set in `generate_captions.py` to control which words can stand alone and get emojis.
 
 ## 📋 Tips & Best Practices
 
 1. **Model Selection**:
 
-   - Use `small` for most cases (fast, good accuracy)
-   - Use `large-v3` only if you need maximum accuracy and can wait
+   - Use `large-v3` for best results (recommended, ~3GB download)
+   - Use `small` for faster processing if needed (~500MB download)
 
 2. **Audio Quality**:
 
@@ -211,7 +194,7 @@ KEYWORDS = [
 
 - Install the Lexend Deca font on your system
 - Restart CapCut after installing fonts
-- Re-import the .ass file
+- Re-import the .srt file
 
 ### Python version issues
 
@@ -221,29 +204,27 @@ KEYWORDS = [
 ## 📦 File Structure
 
 ```
-lodavo-captions/
-├── make_ass_from_audio_local.py  # Main script
-├── requirements_local.txt         # Python dependencies
-├── 1003-1.m4a                    # Example audio input
-├── 1003-1.ass                    # Generated caption file
-├── README.md                      # This file
-├── .venv/                         # Virtual environment (not in git)
-└── lodavo-captions.code-workspace # VS Code workspace
+lodavo-caption-generator/
+├── generate_captions.py      # Main script (SRT output)
+├── requirements_local.txt    # Python dependencies
+├── inputs/                   # Audio sources
+├── outputs/                  # Generated .srt files
+├── README.md                 # This file
+└── lodavo-caption-generator.code-workspace # VS Code workspace (git-ignored)
 ```
 
 ## 🔄 Workflow Summary
 
 1. Record/export your audio → `video.m4a`
-2. Run transcription → `python make_ass_from_audio_local.py video.m4a video.ass --model small --language en --vad`
+2. Run transcription → `python generate_captions.py video.m4a outputs/video.srt --model large-v3 --language en --vad`
 3. Import video into CapCut
-4. Import generated `video.ass` subtitle file
+4. Import generated `video.srt` subtitle file
 5. Edit and export your viral TikTok! 🎉
 
 ## 📚 Resources
 
 - [Faster-Whisper GitHub](https://github.com/guillaumekln/faster-whisper)
 - [Whisper Model Info](https://github.com/openai/whisper)
-- [ASS Subtitle Format](http://www.tcax.org/docs/ass-specs.htm)
 - [Lexend Deca Font](https://fonts.google.com/specimen/Lexend+Deca)
 - [CapCut Official Site](https://www.capcut.com/)
 
