@@ -110,6 +110,11 @@ def clean_text(text: str) -> str:
     text = re.sub(r'\s+', ' ', text)
     text = re.sub(r'\s+,', ',', text)  # remove leading spaces before commas
     text = re.sub(r',\s*', ', ', text)
+    
+    # Remove commas immediately before emojis (no comma before emoji)
+    # Match comma + space + emoji pattern
+    text = re.sub(r',\s+([\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF\U00002600-\U000027BF\U0001F900-\U0001F9FF]+)', r' \1', text)
+    
     text = re.sub(r'\s+', ' ', text).strip()
     
     return text
@@ -242,7 +247,7 @@ def main():
     parser.add_argument("--device", type=str, default="auto", help="Device")
     parser.add_argument("--vad", action="store_true", help="Enable VAD")
     parser.add_argument("--max-words", type=int, default=4, help="Max words per caption")
-    parser.add_argument("--delay", type=float, default=0.2, help="Delay captions by X seconds to prevent spoiling")
+    parser.add_argument("--delay", type=float, default=0.5, help="Delay captions by X seconds to prevent spoiling")
     args = parser.parse_args()
 
     try:

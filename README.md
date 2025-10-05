@@ -7,7 +7,7 @@ Built with OpenAI's Whisper for transcription and fine-tuned for Lodavo's brandi
 ## ✨ Features
 
 - **🎯 High Accuracy**: Uses Whisper large-v3 model with optimized settings
-- **⚡ Smart Timing**: Configurable delay to prevent caption spoiling
+- **⚡ Smart Timing**: 0.5s delay by default to prevent caption spoiling
 - **🎨 Lodavo Branding**: Automatic spelling correction and brand consistency
 - **😀 Smart Emojis**: Context-aware emoji placement with frequency control
 - **📱 CapCut Ready**: SRT format optimized for direct CapCut import
@@ -56,6 +56,7 @@ python generate_captions.py input_audio.m4a output.srt --model large-v3 --langua
   - **small**: Fast, good accuracy (~500MB download)
 - `--language en` - Language code (en for English)
 - `--vad` - Enable Voice Activity Detection for cleaner segments
+- `--delay 0.5` - Delay captions by seconds to avoid spoiling speech (default: 0.5s)
 
 ### Example
 
