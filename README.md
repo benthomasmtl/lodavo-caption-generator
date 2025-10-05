@@ -7,7 +7,7 @@ Built with OpenAI's Whisper for transcription and fine-tuned for Lodavo's brandi
 ## ✨ Features
 
 - **🎯 High Accuracy**: Uses Whisper large-v3 model with optimized settings
-- **⚡ Smart Timing**: 0.5s delay by default to prevent caption spoiling
+- **⚡ Smart Timing**: 0.3s delay by default to prevent caption spoiling
 - **🎨 Lodavo Branding**: Automatic spelling correction and brand consistency
 - **😀 Smart Emojis**: Context-aware emoji placement with frequency control
 - **📱 CapCut Ready**: SRT format optimized for direct CapCut import
@@ -43,8 +43,11 @@ Built with OpenAI's Whisper for transcription and fine-tuned for Lodavo's brandi
 
 ### Basic Command
 
+**⚠️ Important: Always activate the virtual environment first!**
+
 ```bash
-python generate_captions.py input_audio.m4a output.srt --model large-v3 --language en --vad
+source .venv/bin/activate
+python generate_captions.py input_audio.m4a output.srt --model large-v3 --language en --vad --delay 0.3
 ```
 
 ### Parameters
@@ -56,12 +59,23 @@ python generate_captions.py input_audio.m4a output.srt --model large-v3 --langua
   - **small**: Fast, good accuracy (~500MB download)
 - `--language en` - Language code (en for English)
 - `--vad` - Enable Voice Activity Detection for cleaner segments
-- `--delay 0.5` - Delay captions by seconds to avoid spoiling speech (default: 0.5s)
+- `--delay 0.3` - Delay captions by seconds to avoid spoiling speech (default: 0.3s)
+- `--max-words 4` - Maximum words per caption group (default: 4)
+
+### Recommended Command
+
+For best results, use all flags:
+
+```bash
+source .venv/bin/activate
+python generate_captions.py input.m4a output.srt --model large-v3 --language en --vad --delay 0.3 --max-words 4
+```
 
 ### Example
 
 ```bash
-python generate_captions.py 1003-1.m4a 1003-1.srt --model large-v3 --language en --vad
+source .venv/bin/activate
+python generate_captions.py 1003-1.m4a 1003-1.srt --model large-v3 --language en --vad --delay 0.3
 ```
 
 **First run note**: The script will download the Whisper model (~3GB for large-v3). This only happens once—subsequent runs are offline.
@@ -217,7 +231,7 @@ lodavo-caption-generator/
 ## 🔄 Workflow Summary
 
 1. Record/export your audio → `video.m4a`
-2. Run transcription → `python generate_captions.py video.m4a outputs/video.srt --model large-v3 --language en --vad`
+2. Run transcription → `python generate_captions.py video.m4a outputs/video.srt --model large-v3 --language en --vad --delay 0.3`
 3. Import video into CapCut
 4. Import generated `video.srt` subtitle file
 5. Edit and export your viral TikTok! 🎉

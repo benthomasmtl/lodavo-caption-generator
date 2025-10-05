@@ -23,7 +23,7 @@ def secs_to_srt_time(secs: float) -> str:
 EMOJI_MAP = {
     "save": "💰", "savings": "💰", "money": "💸", "cash": "💸",
     "win": "🏆", "winner": "🏆", "prize": "🎉",
-    "bank": "🏦", "goal": "🎯", "free": "🆓",
+    "bank account": "🏦", "goal": "🎯", "free": "🆓",
     "today": "📅", "week": "📆", "weekly": "📆",
     "ticket": "🎟️", "tickets": "🎟️", "bonus": "➕",
     "jackpot": "💥", "lodavo": "💙", "lodevo": "💙"
@@ -31,7 +31,7 @@ EMOJI_MAP = {
 
 EMPHASIS_WORDS = {
     "save", "savings", "money", "cash", "win", "winner", "prize",
-    "free", "jackpot", "tickets", "bonus", "lodavo", "lodevo"
+    "free", "jackpot", "tickets", "bonus", "lodavo", "lodevo", "bank"
 }
 
 
@@ -52,22 +52,37 @@ def add_emojis_inline(text: str, emoji_counter: dict, recent_emoji_count: int) -
     if recent_emoji_count > 0:
         return text, recent_emoji_count - 1
     
-    words = text.split()
-    result_words = []
+    # First check for multi-word phrases in EMOJI_MAP
+    text_lower = text.lower()
     emoji_added = False
+    result_text = text
     
-    for word in words:
-        result_words.append(word)
-        
-        # Check if this word (without punctuation) matches emoji keywords
-        clean_word = re.sub(r'[^\w]', '', word.lower())
-        
-        if clean_word in EMOJI_MAP and not emoji_added:
-            if should_add_emoji_for_word(clean_word, emoji_counter):
-                result_words.append(EMOJI_MAP[clean_word])
+    for phrase in EMOJI_MAP:
+        if ' ' in phrase and phrase in text_lower and not emoji_added:
+            if should_add_emoji_for_word(phrase, emoji_counter):
+                # Replace the phrase with phrase + emoji
+                result_text = re.sub(re.escape(phrase), f"{phrase} {EMOJI_MAP[phrase]}", result_text, flags=re.IGNORECASE)
                 emoji_added = True
+                break
     
-    result_text = ' '.join(result_words)
+    # If no multi-word phrase matched, check single words
+    if not emoji_added:
+        words = result_text.split()
+        result_words = []
+        
+        for word in words:
+            result_words.append(word)
+            
+            # Check if this word (without punctuation) matches emoji keywords
+            clean_word = re.sub(r'[^\w]', '', word.lower())
+            
+            if clean_word in EMOJI_MAP and not emoji_added:
+                if should_add_emoji_for_word(clean_word, emoji_counter):
+                    result_words.append(EMOJI_MAP[clean_word])
+                    emoji_added = True
+        
+        result_text = ' '.join(result_words)
+    
     new_recent_count = 2 if emoji_added else 0  # Skip next 2 captions if we added emoji
     
     return result_text, new_recent_count
@@ -247,7 +262,7 @@ def main():
     parser.add_argument("--device", type=str, default="auto", help="Device")
     parser.add_argument("--vad", action="store_true", help="Enable VAD")
     parser.add_argument("--max-words", type=int, default=4, help="Max words per caption")
-    parser.add_argument("--delay", type=float, default=0.5, help="Delay captions by X seconds to prevent spoiling")
+    parser.add_argument("--delay", type=float, default=0.3, help="Delay captions by X seconds to prevent spoiling")
     args = parser.parse_args()
 
     try:
@@ -354,8 +369,9 @@ def main():
             cap["text"], emoji_counter, recent_emoji_count
         )
         
-        # Remove any commas that ended up before emojis after emoji insertion
-        text_with_emojis = re.sub(r',\s*([^\w\s,?]+)', r' \1', text_with_emojis)
+        # Remove any commas that ended up before OR after emojis after emoji insertion
+        text_with_emojis = re.sub(r',\s*([^\w\s,?]+)', r' \1', text_with_emojis)  # before emojis
+        text_with_emojis = re.sub(r'([^\w\s,?]+)\s*,', r'\1', text_with_emojis)   # after emojis
 
         srt_lines.append(f"{i}")
         srt_lines.append(f"{start_time} --> {end_time}")
