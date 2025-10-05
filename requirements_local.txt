@@ -1,0 +1,7 @@
+faster-whisper==1.0.3
+soundfile==0.13.1
+numpy>=2.3.3
+ctranslate2>=4.6.0
+huggingface-hub>=0.35.3
+tokenizers>=0.22.1
+onnxruntime>=1.23.0
