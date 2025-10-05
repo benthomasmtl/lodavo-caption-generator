@@ -112,8 +112,8 @@ def clean_text(text: str) -> str:
     text = re.sub(r',\s*', ', ', text)
     
     # Remove commas immediately before emojis (no comma before emoji)
-    # Match comma + space + emoji pattern
-    text = re.sub(r',\s+([\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF\U0001F1E0-\U0001F1FF\U00002600-\U000027BF\U0001F900-\U0001F9FF]+)', r' \1', text)
+    # Match comma + optional space + any emoji or symbol
+    text = re.sub(r',\s*([^\w\s,?]+)', r' \1', text)
     
     text = re.sub(r'\s+', ' ', text).strip()
     
@@ -353,6 +353,9 @@ def main():
         text_with_emojis, recent_emoji_count = add_emojis_inline(
             cap["text"], emoji_counter, recent_emoji_count
         )
+        
+        # Remove any commas that ended up before emojis after emoji insertion
+        text_with_emojis = re.sub(r',\s*([^\w\s,?]+)', r' \1', text_with_emojis)
 
         srt_lines.append(f"{i}")
         srt_lines.append(f"{start_time} --> {end_time}")
