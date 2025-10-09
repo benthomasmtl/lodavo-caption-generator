@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 """
 generate_captions.py
-Lodavo's SRT caption generator for CapCut with perfect timing and positioning.
+Lodavo's audio transcription tool with two modes:
 
-Focus: Maximum accuracy, short phrases, sentence breaks, all caps, question marks only.
+1. SRT Mode: Generate formatted captions for CapCut with perfect timing and positioning
+   - Focus: Maximum accuracy, short phrases, sentence breaks, all caps, question marks only
+   
+2. TXT Mode: Generate simple text transcript for pasting into AI tools
+   - Focus: Maximum accuracy, natural punctuation, ready for AI caption generation
+
+Usage:
+  python generate_captions.py srt input.m4a output.srt --model large-v3 --vad
+  python generate_captions.py txt input.m4a output.txt --model large-v3 --vad
 """
 
 import argparse
@@ -253,18 +261,150 @@ def process_segments_minimal(segments, max_words_per_caption=4):
     return captions
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Generate minimal, accurate SRT captions")
-    parser.add_argument("input_audio", type=str, help="Input audio file")
-    parser.add_argument("output_srt", type=str, help="Output SRT file")
-    parser.add_argument("--model", type=str, default="large-v3", help="Whisper model")
-    parser.add_argument("--language", type=str, default="en", help="Language")
-    parser.add_argument("--device", type=str, default="auto", help="Device")
-    parser.add_argument("--vad", action="store_true", help="Enable VAD")
-    parser.add_argument("--max-words", type=int, default=4, help="Max words per caption")
-    parser.add_argument("--delay", type=float, default=0.3, help="Delay captions by X seconds to prevent spoiling")
-    args = parser.parse_args()
+def generate_transcript(input_audio: str, output_txt: str, model_name: str = "large-v3", language: str = "en", device: str = "auto", vad: bool = False):
+    """Generate a simple text transcript from audio with high accuracy."""
+    try:
+        from faster_whisper import WhisperModel
+    except ImportError:
+        print("Please install Faster-Whisper first: pip install -r requirements_local.txt")
+        return False
 
+    # Audio loading logic - use numpy/soundfile fallback since PyAV has build issues on Python 3.13
+    try:
+        import soundfile as sf
+        import numpy as np
+    except Exception:
+        print("Missing audio packages. Install soundfile and numpy")
+        return False
+
+    print(f"Loading Whisper model '{model_name}'...")
+    compute_type = "auto"
+    device_setting = None if device == "auto" else device
+    model = WhisperModel(model_name, device=device_setting or "auto", compute_type=compute_type)
+
+    print(f"Transcribing '{input_audio}'...")
+    
+    # Audio conversion logic
+    audio_path = input_audio
+    import tempfile
+    import os
+    import subprocess
+    
+    ext = os.path.splitext(audio_path)[1].lower()
+    if ext in ['.m4a', '.mp4', '.mov', '.aac', '.flac', '.ogg', '.opus', '.webm']:
+        temp_wav = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
+        temp_wav.close()
+        subprocess.run([
+            'ffmpeg', '-i', audio_path,
+            '-ar', '16000',
+            '-ac', '1',
+            '-y',
+            temp_wav.name
+        ], check=True, capture_output=True)
+        audio_path = temp_wav.name
+        cleanup_temp = True
+    else:
+        cleanup_temp = False
+    
+    data, sr = sf.read(audio_path, dtype='float32')
+    
+    if cleanup_temp:
+        try:
+            os.unlink(audio_path)
+        except:
+            pass
+    
+    if data.ndim > 1:
+        data = np.mean(data, axis=1)
+    
+    # Use maximum accuracy settings for transcript
+    segments_iter, info = model.transcribe(
+        data,
+        language=language,
+        beam_size=15,  # Even higher beam size for maximum accuracy
+        vad_filter=vad,
+        word_timestamps=False,  # Don't need word timestamps for simple transcript
+        temperature=0.0,  # Deterministic for consistency
+        best_of=5,  # Use best of 5 attempts for maximum accuracy
+    )
+
+    # Collect and combine all text
+    print("Processing transcript...")
+    transcript_text = []
+    
+    for seg in segments_iter:
+        text = seg.text.strip()
+        if text:
+            # Basic cleaning - fix common spelling issues but keep natural punctuation
+            text = fix_spelling(text)
+            transcript_text.append(text)
+
+    # Join with spaces and clean up spacing
+    full_transcript = ' '.join(transcript_text)
+    full_transcript = re.sub(r'\s+', ' ', full_transcript).strip()
+    
+    # Write to text file
+    Path(output_txt).write_text(full_transcript, encoding="utf-8")
+    
+    print(f"\n✅ Success! Generated transcript in {output_txt}")
+    print(f"📝 Transcript length: {len(full_transcript)} characters")
+    print("💡 Ready to paste into AI tools for caption generation!")
+    
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Generate captions or transcript from audio")
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    
+    # SRT caption generation (existing functionality)
+    srt_parser = subparsers.add_parser('srt', help='Generate SRT captions')
+    srt_parser.add_argument("input_audio", type=str, help="Input audio file")
+    srt_parser.add_argument("output_srt", type=str, help="Output SRT file")
+    srt_parser.add_argument("--model", type=str, default="large-v3", help="Whisper model")
+    srt_parser.add_argument("--language", type=str, default="en", help="Language")
+    srt_parser.add_argument("--device", type=str, default="auto", help="Device")
+    srt_parser.add_argument("--vad", action="store_true", help="Enable VAD")
+    srt_parser.add_argument("--max-words", type=int, default=4, help="Max words per caption")
+    srt_parser.add_argument("--delay", type=float, default=0.3, help="Delay captions by X seconds to prevent spoiling")
+    
+    # Text transcript generation (new functionality)
+    txt_parser = subparsers.add_parser('txt', help='Generate simple text transcript')
+    txt_parser.add_argument("input_audio", type=str, help="Input audio file")
+    txt_parser.add_argument("output_txt", type=str, help="Output text file")
+    txt_parser.add_argument("--model", type=str, default="large-v3", help="Whisper model")
+    txt_parser.add_argument("--language", type=str, default="en", help="Language")
+    txt_parser.add_argument("--device", type=str, default="auto", help="Device")
+    txt_parser.add_argument("--vad", action="store_true", help="Enable VAD")
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
+        return
+    
+    if args.command == 'txt':
+        # Generate simple text transcript
+        success = generate_transcript(
+            args.input_audio,
+            args.output_txt,
+            args.model,
+            args.language,
+            args.device,
+            args.vad
+        )
+        if not success:
+            return
+        return
+    
+    elif args.command == 'srt':
+        # Generate SRT captions (existing functionality)
+        pass  # Continue with existing SRT generation code below
+    else:
+        parser.print_help()
+        return
+
+    # SRT caption generation (existing functionality)
     try:
         from faster_whisper import WhisperModel
     except ImportError:
@@ -272,7 +412,6 @@ def main():
         return
 
     # Audio loading logic - use numpy/soundfile fallback since PyAV has build issues on Python 3.13
-    use_numpy_audio = True
     try:
         import soundfile as sf
         import numpy as np
@@ -287,58 +426,47 @@ def main():
 
     print(f"Transcribing '{args.input_audio}' with high accuracy settings...")
     
-    # Use higher beam size for better accuracy
-    if not use_numpy_audio:
-        segments_iter, info = model.transcribe(
-            args.input_audio,
-            language=args.language,
-            beam_size=10,  # Higher for accuracy
-            vad_filter=args.vad,
-            word_timestamps=True,
-            temperature=0.0,  # Deterministic for consistency
-        )
+    # Audio conversion logic
+    audio_path = args.input_audio
+    import tempfile
+    import os
+    import subprocess
+    
+    ext = os.path.splitext(audio_path)[1].lower()
+    if ext in ['.m4a', '.mp4', '.mov', '.aac', '.flac', '.ogg', '.opus', '.webm']:
+        temp_wav = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
+        temp_wav.close()
+        subprocess.run([
+            'ffmpeg', '-i', audio_path,
+            '-ar', '16000',
+            '-ac', '1',
+            '-y',
+            temp_wav.name
+        ], check=True, capture_output=True)
+        audio_path = temp_wav.name
+        cleanup_temp = True
     else:
-        # Audio conversion logic
-        audio_path = args.input_audio
-        import tempfile
-        import os
-        import subprocess
-        
-        ext = os.path.splitext(audio_path)[1].lower()
-        if ext in ['.m4a', '.mp4', '.mov', '.aac', '.flac', '.ogg', '.opus', '.webm']:
-            temp_wav = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
-            temp_wav.close()
-            subprocess.run([
-                'ffmpeg', '-i', audio_path,
-                '-ar', '16000',
-                '-ac', '1',
-                '-y',
-                temp_wav.name
-            ], check=True, capture_output=True)
-            audio_path = temp_wav.name
-            cleanup_temp = True
-        else:
-            cleanup_temp = False
-        
-        data, sr = sf.read(audio_path, dtype='float32')
-        
-        if cleanup_temp:
-            try:
-                os.unlink(audio_path)
-            except:
-                pass
-        
-        if data.ndim > 1:
-            data = np.mean(data, axis=1)
-        
-        segments_iter, info = model.transcribe(
-            data,
-            language=args.language,
-            beam_size=10,
-            vad_filter=args.vad,
-            word_timestamps=True,
-            temperature=0.0,
-        )
+        cleanup_temp = False
+    
+    data, sr = sf.read(audio_path, dtype='float32')
+    
+    if cleanup_temp:
+        try:
+            os.unlink(audio_path)
+        except:
+            pass
+    
+    if data.ndim > 1:
+        data = np.mean(data, axis=1)
+    
+    segments_iter, info = model.transcribe(
+        data,
+        language=args.language,
+        beam_size=10,
+        vad_filter=args.vad,
+        word_timestamps=True,
+        temperature=0.0,
+    )
 
     # Collect segments
     print("Processing segments for maximum accuracy...")
@@ -376,7 +504,9 @@ def main():
         srt_lines.append(f"{i}")
         srt_lines.append(f"{start_time} --> {end_time}")
         srt_lines.append(text_with_emojis)
-        srt_lines.append("")  # Blank line between entries    # Write SRT file
+        srt_lines.append("")  # Blank line between entries
+    
+    # Write SRT file
     Path(args.output_srt).write_text("\n".join(srt_lines), encoding="utf-8")
     
     print(f"\n✅ Success! Generated {len(captions)} minimal captions in {args.output_srt}")

@@ -41,16 +41,29 @@ Built with OpenAI's Whisper for transcription and fine-tuned for Lodavo's brandi
 
 ## 📝 Usage
 
-### Basic Command
+The script now supports two modes:
+
+### 1. Generate SRT Captions (Original Functionality)
 
 **⚠️ Important: Always activate the virtual environment first!**
 
 ```bash
 source .venv/bin/activate
-python generate_captions.py input_audio.m4a output.srt --model large-v3 --language en --vad --delay 0.3
+python generate_captions.py srt input_audio.m4a output.srt --model large-v3 --language en --vad --delay 0.3
+```
+
+### 2. Generate Simple Text Transcript (New!)
+
+For getting a clean text transcript to paste into AI tools:
+
+```bash
+source .venv/bin/activate
+python generate_captions.py txt input_audio.m4a output.txt --model large-v3 --language en --vad
 ```
 
 ### Parameters
+
+#### SRT Mode Parameters:
 
 - `input_audio.m4a` - Your audio/video file (.m4a, .mp3, .wav, .mov, etc.)
 - `output.srt` - Output caption file name (SubRip)
@@ -62,20 +75,44 @@ python generate_captions.py input_audio.m4a output.srt --model large-v3 --langua
 - `--delay 0.3` - Delay captions by seconds to avoid spoiling speech (default: 0.3s)
 - `--max-words 4` - Maximum words per caption group (default: 4)
 
-### Recommended Command
+#### TXT Mode Parameters:
 
-For best results, use all flags:
+- `input_audio.m4a` - Your audio/video file
+- `output.txt` - Output text file
+- `--model large-v3` - Whisper model (uses even higher accuracy settings)
+- `--language en` - Language code
+- `--vad` - Enable Voice Activity Detection
+
+### Recommended Commands
+
+**For SRT captions:**
 
 ```bash
 source .venv/bin/activate
-python generate_captions.py input.m4a output.srt --model large-v3 --language en --vad --delay 0.3 --max-words 4
+python generate_captions.py srt input.m4a output.srt --model large-v3 --language en --vad --delay 0.3 --max-words 4
 ```
 
-### Example
+**For text transcript:**
 
 ```bash
 source .venv/bin/activate
-python generate_captions.py 1003-1.m4a 1003-1.srt --model large-v3 --language en --vad --delay 0.3
+python generate_captions.py txt input.m4a transcript.txt --model large-v3 --language en --vad
+```
+
+### Examples
+
+**Generate SRT captions:**
+
+```bash
+source .venv/bin/activate
+python generate_captions.py srt 1003-1.m4a 1003-1.srt --model large-v3 --language en --vad --delay 0.3
+```
+
+**Generate text transcript:**
+
+```bash
+source .venv/bin/activate
+python generate_captions.py txt 1003-1.m4a 1003-1.txt --model large-v3 --language en --vad
 ```
 
 **First run note**: The script will download the Whisper model (~3GB for large-v3). This only happens once—subsequent runs are offline.
@@ -230,11 +267,24 @@ lodavo-caption-generator/
 
 ## 🔄 Workflow Summary
 
+### Option 1: Direct to CapCut (SRT Mode)
+
 1. Record/export your audio → `video.m4a`
-2. Run transcription → `python generate_captions.py video.m4a outputs/video.srt --model large-v3 --language en --vad --delay 0.3`
+2. Run transcription → `python generate_captions.py srt video.m4a outputs/video.srt --model large-v3 --language en --vad --delay 0.3`
 3. Import video into CapCut
 4. Import generated `video.srt` subtitle file
 5. Edit and export your viral TikTok! 🎉
+
+### Option 2: AI-Assisted Workflow (TXT Mode)
+
+1. Record/export your audio → `video.m4a`
+2. Generate transcript → `python generate_captions.py txt video.m4a outputs/video.txt --model large-v3 --language en --vad`
+3. Copy transcript text from `outputs/video.txt`
+4. Paste into ChatGPT/Claude with prompt: "Please help me create engaging, short-form video captions from this transcript..."
+5. Use AI suggestions to manually create captions in CapCut or your editing tool
+6. Export your content! 🎬
+
+**💡 Pro Tip**: The TXT mode gives you maximum flexibility to work with AI tools for creative caption styling while maintaining high transcription accuracy.
 
 ## 📚 Resources
 
