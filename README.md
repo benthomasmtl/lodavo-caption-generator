@@ -73,7 +73,7 @@ python generate_captions.py txt input_audio.m4a output.txt --model large-v3 --la
 - `--language en` - Language code (en for English)
 - `--vad` - Enable Voice Activity Detection for cleaner segments
 - `--delay 0.3` - Delay captions by seconds to avoid spoiling speech (default: 0.3s)
-- `--max-words 4` - Maximum words per caption group (default: 4)
+- `--max-words 2` - Maximum words per caption group (default: 2)
 
 #### TXT Mode Parameters:
 
@@ -89,7 +89,7 @@ python generate_captions.py txt input_audio.m4a output.txt --model large-v3 --la
 
 ```bash
 source .venv/bin/activate
-python generate_captions.py srt input.m4a output.srt --model large-v3 --language en --vad --delay 0.3 --max-words 4
+python generate_captions.py srt input.m4a output.srt --model large-v3 --language en --vad --delay 0.3 --max-words 2
 ```
 
 **For text transcript:**
@@ -146,7 +146,7 @@ python generate_captions.py txt 1003-1.m4a 1003-1.txt --model large-v3 --languag
 
 1. **Audio Conversion**: Uses FFmpeg (or fallback loaders) to obtain 16kHz mono audio
 2. **Transcription**: Faster-Whisper produces segments with start/end times
-3. **Sentence + Phrase Split**: Sentences broken at question marks, then phrases of up to 4 words
+3. **Sentence + Phrase Split**: Sentences broken at question marks, then phrases of 1-2 words
 4. **Standalone Emphasis**: Emphasis words (e.g. SAVE, WIN, BONUS, LODAVO) become single-word captions
 5. **Emoji Enhancement**: Alternating emoji addition after emphasis words, with cooldown spacing
 6. **Comma Heuristics**: Intro words like LOOK, HEY, SO gain a trailing comma for natural pacing

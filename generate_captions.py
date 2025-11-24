@@ -166,7 +166,7 @@ def split_by_sentences(text: str) -> list:
     return [s for s in result if s.strip()]
 
 
-def break_into_short_phrases(text: str, max_words: int = 4) -> list:
+def break_into_short_phrases(text: str, max_words: int = 2) -> list:
     """Break text into short phrases of max_words or fewer.
 
     If an emphasis word (that will likely receive an emoji) appears, it becomes its own
@@ -197,7 +197,7 @@ def break_into_short_phrases(text: str, max_words: int = 4) -> list:
     return phrases
 
 
-def process_segments_minimal(segments, max_words_per_caption=4):
+def process_segments_minimal(segments, max_words_per_caption=2):
     """Process segments with sentence-based breaks and short phrases."""
     captions = []
     
@@ -365,7 +365,7 @@ def main():
     srt_parser.add_argument("--language", type=str, default="en", help="Language")
     srt_parser.add_argument("--device", type=str, default="auto", help="Device")
     srt_parser.add_argument("--vad", action="store_true", help="Enable VAD")
-    srt_parser.add_argument("--max-words", type=int, default=4, help="Max words per caption")
+    srt_parser.add_argument("--max-words", type=int, default=2, help="Max words per caption")
     srt_parser.add_argument("--delay", type=float, default=0.3, help="Delay captions by X seconds to prevent spoiling")
     
     # Text transcript generation (new functionality)
