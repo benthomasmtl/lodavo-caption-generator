@@ -265,9 +265,10 @@ def generate_transcript(input_audio: str, output_txt: str, model_name: str = "la
     """Generate a simple text transcript from audio with high accuracy."""
     try:
         from faster_whisper import WhisperModel
-    except ImportError:
-        print("Please install Faster-Whisper first: pip install -r requirements_local.txt")
-        return False
+    except ImportError as e:
+        print("Faster-Whisper import failed.")
+        print("Actual error:", e)
+    return
 
     # Audio loading logic - use numpy/soundfile fallback since PyAV has build issues on Python 3.13
     try:
